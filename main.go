@@ -153,7 +153,7 @@ func discord(message string) error {
 	return nil
 }
 
-func notifyJoined(username string) error {
+func notifyJoined(username string) []error {
 	notificationMessage := fmt.Sprintf("%s joined your Minecraft server", username)
 
 	var smsRecipients []string
@@ -163,22 +163,24 @@ func notifyJoined(username string) error {
 		}
 	}
 
+	errors := []error{}
+
 	smsErr := sms(smsRecipients, notificationMessage)
 	if smsErr != nil {
-		return smsErr
+		errors = append(errors, smsErr)
 	}
 
 	emailErr := email(smtpSendAs, strings.Split(smtpToNotify, ","), notificationMessage, notificationMessage)
 	if emailErr != nil {
-		return emailErr
+		errors = append(errors, emailErr)
 	}
 
 	discordErr := discord(notificationMessage)
 	if discordErr != nil {
-		return discordErr
+		errors = append(errors, discordErr)
 	}
 
-	return nil
+	return errors
 }
 
 func main() {
@@ -240,9 +242,9 @@ func main() {
 
 				if lastSeen[username].Add(durrationAwayToNotifyAt).Before(time.Now()) {
 					fmt.Println("notify of", username)
-					notifyErr := notifyJoined(username)
-					if notifyErr != nil {
-						fmt.Println("WARNING: Failed to notify.", notifyErr)
+					notifyErrs := notifyJoined(username)
+					for err := range notifyErrs {
+						fmt.Println("WARNING: Failed to notify.", err)
 					}
 				}
 
